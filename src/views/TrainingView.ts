@@ -2,10 +2,6 @@ import { EventEmitter } from "../helpers/EventEmitter";
 import { createElement } from "../helpers/createElement";
 import { isLetter } from "../helpers/isLetter";
 
-type Letters = {
-  [key: string]: HTMLElement[];
-};
-
 enum LetterState {
   DEFAULT = "btn-primary",
   ERROR = "btn-danger",
@@ -19,8 +15,6 @@ export class TrainingView extends EventEmitter {
   private totalQuestionsElement: HTMLElement | null;
 
   private bindedHandleKeyClick: (event: KeyboardEvent) => void;
-
-  private lettersElements: Letters = {};
 
   constructor() {
     super();
@@ -70,12 +64,6 @@ export class TrainingView extends EventEmitter {
     });
 
     letterElement.addEventListener("click", this.handleLetterClick.bind(this));
-
-    if (!this.lettersElements[letter]) {
-      this.lettersElements[letter] = [];
-    }
-
-    this.lettersElements[letter].push(letterElement);
 
     return letterElement;
   }
