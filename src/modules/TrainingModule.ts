@@ -1,123 +1,131 @@
 import { TrainingView } from "../views/TrainingView";
-import {fetchWords} from "./api/fetchWords";
+import { fetchWords } from "./api/fetchWords";
 
 type Question = {
-    answer: string;
-    letters: string[];
-    selectedLetters: string[];
-    errorsCount: number;
-    isCompleted: boolean;
-}
+  answer: string;
+  letters: string[];
+  selectedLetters: string[];
+  errorsCount: number;
+  isCompleted: boolean;
+};
 
 export class TrainingModule {
-    private questions: Question[] = [];
-    private currentQuestion: Question;
+  private questions: Question[] = [];
+  private currentQuestion: Question;
 
-    private completedQuestions = 0;
+  private completedQuestions = 0;
 
-    private view = new TrainingView();
+  private view = new TrainingView();
 
-    constructor() {
-        this.view.on('onLetterClick', this.selectLetter.bind(this));
+  constructor() {
+    this.view.on("onLetterClick", this.selectLetter.bind(this));
+  }
+
+  async startTrain() {
+    const words = await fetchWords();
+
+    if (words.length === 0) {
+      throw new Error("Not found words for train");
     }
 
-    async startTrain() {
-        const words = await fetchWords();
+    this.questions = words.map((word) => ({
+      answer: word,
+      letters: word.split("").sort(() => 0.5 - Math.random()),
+      errorsCount: 0,
+      isCompleted: false,
+      selectedLetters: [],
+    }));
 
-        if (words.length === 0) {
-            throw new Error('Not found words for train');
-        }
+    this.view.showTotalQuestions(words.length);
+    this.nextQuestion();
+  }
 
-        this.questions = words.map((word) => ({
-            answer: word,
-            letters: word.split('').sort(() => 0.5 - Math.random()),
-            errorsCount: 0,
-            isCompleted: false,
-            selectedLetters: [],
-        }));
-
-        this.view.showTotalQuestions(words.length);
-        this.nextQuestion();
+  selectLetter(letter: string, id?: string) {
+    if (this.currentQuestion.isCompleted) {
+      return;
     }
 
-    selectLetter(letter: string, id?: string) {
-        const {answer, selectedLetters} = this.currentQuestion;
-        const preparedLetter = letter.toLowerCase();
+    const { answer, selectedLetters } = this.currentQuestion;
+    const preparedLetter = letter.toLowerCase();
+    const isCorrectLetter = answer[selectedLetters.length] === preparedLetter;
 
-        const isCorrectLetter = answer[selectedLetters.length] === preparedLetter;
+    if (!isCorrectLetter && this.currentQuestion.errorsCount === 2) {
+      this.currentQuestion.isCompleted = true;
+      this.currentQuestion.errorsCount += 1;
+      this.showQuestionError();
+      return;
+    } else if (!isCorrectLetter) {
+      this.currentQuestion.errorsCount += 1;
 
-        if (!isCorrectLetter && this.currentQuestion.errorsCount === 2) {
-            this.currentQuestion.isCompleted = true;
-            this.currentQuestion.errorsCount+= 1;
-            this.showQuestionError();
-            return;
-        } else if (!isCorrectLetter) {
-            this.currentQuestion.errorsCount+= 1;
-
-            id && this.view.showLetterError(id);
-            return;
-        }
-
-
-        selectedLetters.push(preparedLetter);
-        this.view.selectLetter(id);
-
-        if (selectedLetters.join('') === answer) {
-            this.nextQuestion();
-        }
+      id && this.view.showLetterError(id);
+      return;
     }
 
-    showQuestionError() {
-        this.view.clearLetters();
+    selectedLetters.push(preparedLetter);
+    this.view.selectLetter(id);
 
-        this.view.showErrorAnswer(this.currentQuestion.answer);
+    if (selectedLetters.join("") === answer) {
+      this.nextQuestion();
+    }
+  }
 
-        setTimeout(() => {
-            this.nextQuestion();
-        }, 2000);
+  showQuestionError() {
+    this.view.clearLetters();
+
+    this.view.showErrorAnswer(this.currentQuestion.answer);
+
+    setTimeout(() => {
+      this.nextQuestion();
+    }, 2000);
+  }
+
+  nextQuestion() {
+    // Помечаем сделанным текущий вопрос
+    if (this.currentQuestion) {
+      this.currentQuestion.isCompleted = true;
+      this.completedQuestions += 1;
     }
 
-    nextQuestion() {
-        // Помечаем сделанным текущий вопрос
-        if (this.currentQuestion) {
-            this.currentQuestion.isCompleted = true;
-            this.completedQuestions+= 1;
-        }
+    this.currentQuestion = this.questions.find(
+      (question) => !question.isCompleted
+    );
 
-        this.currentQuestion = this.questions.find((question) => !question.isCompleted);
-
-        if (!this.currentQuestion) {
-            this.complete();
-            return;
-        }
-
-        this.view.clearAnswer();
-        this.view.clearLetters();
-
-        this.view.showQuestionNumber(this.completedQuestions + 1);
-        this.view.showLetters(this.currentQuestion.letters);
+    if (!this.currentQuestion) {
+      this.complete();
+      return;
     }
 
-    complete() {
-        let questionsWithoutErrors = 0;
-        let totalErrors = 0;
-        let failedQuestion: Question;
+    this.view.clearAnswer();
+    this.view.clearLetters();
 
-        for(let i = 0; i < this.questions.length; i++) {
-            const {errorsCount} = this.questions[i];
+    this.view.showQuestionNumber(this.completedQuestions + 1);
+    this.view.showLetters(this.currentQuestion.letters);
+  }
 
-            if (errorsCount === 0) {
-                questionsWithoutErrors+= 1;
-                continue;
-            }
+  complete() {
+    let questionsWithoutErrors = 0;
+    let totalErrors = 0;
+    let failedQuestion: Question;
 
-            totalErrors+= errorsCount;
+    for (let i = 0; i < this.questions.length; i++) {
+      const { errorsCount } = this.questions[i];
 
-            if (!failedQuestion || errorsCount > failedQuestion?.errorsCount) {
-                failedQuestion = this.questions[i];
-            }
-        }
+      if (errorsCount === 0) {
+        questionsWithoutErrors += 1;
+        continue;
+      }
 
-        this.view.showResult(questionsWithoutErrors, totalErrors, failedQuestion?.answer);
+      totalErrors += errorsCount;
+
+      if (!failedQuestion || errorsCount > failedQuestion?.errorsCount) {
+        failedQuestion = this.questions[i];
+      }
     }
+
+    this.view.showResult(
+      questionsWithoutErrors,
+      totalErrors,
+      failedQuestion?.answer.toUpperCase()
+    );
+  }
 }

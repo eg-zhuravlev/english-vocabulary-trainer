@@ -1,25 +1,32 @@
 type ElementAttrs = {
-    [key: string]: string;
-}
+  [key: string]: string;
+};
 
-export const createElement = (tag: string, attrs: ElementAttrs, inner?: string, ...children: HTMLElement[]) => {
-    let elem = document.createElement(tag);
+type CreateElementOptions = {
+  attrs?: ElementAttrs;
+  inner?: string;
+  children?: HTMLElement[];
+};
 
-    if(inner) {
-        elem.innerHTML = inner;
-    };
+export const createElement = (tag: string, options: CreateElementOptions) => {
+  const { attrs, inner, children } = options;
+  const elem = document.createElement(tag);
 
-    for(let key in attrs) {
-        elem.setAttribute(key, attrs[key])
-    };
+  if (inner) {
+    elem.innerHTML = inner;
+  }
 
-    if(children) {
-        for(let i = 0; i < children.length; i++) {
-            if (children[i]) {
-                elem.appendChild(children[i])
-            }
-        };
+  for (let key in attrs) {
+    elem.setAttribute(key, attrs[key]);
+  }
+
+  if (children) {
+    for (let i = 0; i < children.length; i++) {
+      if (children[i]) {
+        elem.appendChild(children[i]);
+      }
     }
+  }
 
-    return elem;
+  return elem;
 };
